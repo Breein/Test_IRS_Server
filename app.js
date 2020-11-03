@@ -3,6 +3,11 @@ const
   http = require('http').createServer(app),
   io = require('socket.io')(http);
 
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/index.html');
+});
+
+
 let count = 0;
 let connected = {};
 
@@ -40,6 +45,8 @@ io.on('connection', (socket) => {
     sendMessage(io, id, 'logout');
     delete connected[id];
     io.emit('counter change', count);
+
+    //console.log("Пользователь отключился", `Всего подключено: ${count}`);
   });
 
   socket.on('chat message', (msg) => {
@@ -47,8 +54,8 @@ io.on('connection', (socket) => {
   });
 });
 
-http.listen(3000, () => {
-  console.log('listening on *: 3000');
+http.listen(80, () => {
+  console.log('listening on *: 80');
 });
 
 /**
