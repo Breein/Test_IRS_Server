@@ -7,7 +7,6 @@ app.get('/', (req, res) => {
   res.sendFile(__dirname + '/index.html');
 });
 
-
 let count = 0;
 let connected = {};
 
@@ -36,7 +35,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  //console.log('Новый пользователь подключен', `Всего подключено: ${count}`);
+  console.log('Новый пользователь подключен', `Всего подключено: ${count}`);
 
   socket.on('disconnect', ()=>{
     count--;
@@ -46,16 +45,17 @@ io.on('connection', (socket) => {
     delete connected[id];
     io.emit('counter change', count);
 
-    //console.log("Пользователь отключился", `Всего подключено: ${count}`);
+    console.log("Пользователь отключился", `Всего подключено: ${count}`);
   });
 
   socket.on('chat message', (msg) => {
+    console.log("Message in", msg);
     sendMessage(io, msg.user, msg.text);
   });
 });
 
-http.listen(8080, () => {
-  console.log('listening on *: 8080');
+http.listen(3000, () => {
+  console.log('listening on *: 3000');
 });
 
 /**
