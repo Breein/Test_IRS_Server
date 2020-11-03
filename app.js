@@ -4,29 +4,40 @@ const
   io = require('socket.io')(http);
 
 app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/index.html');
+  res.send('Server is running!');
 });
 
+const historyLimit = 10;
 let count = 0;
 let connected = {};
+let history = [];
 
 io.on('connection', (socket) => {
 
-  connected[socket.handshake.query.user] = {
-    user: {
-      id: 0,
-      name: "Not found!",
-      avatar: ""
-    },
-    connection: socket
-  };
-  count++;
+  const id = socket.handshake.query.user;
+
+  if(connected[id]){
+    connected[id].connection.push(socket.id);
+  }else{
+    connected[id] = {
+      user: {
+        id: null,
+        name: "Not found!",
+        avatar: ""
+      },
+      connection: [socket.id]
+    };
+    count++;
+  }
+
+  sendHistory(socket.id);
+  io.emit('get user data', id);
   io.emit('counter change', count);
 
   socket.on('log in', (res) =>{
     const connection = connected[res.id];
 
-    if(connection){
+    if(connection && connection.user.id === null){
       connection.user.id = res.id;
       connection.user.name = res.name;
       connection.user.avatar = res.avatar;
@@ -34,22 +45,26 @@ io.on('connection', (socket) => {
       sendMessage(io, res.id, 'login');
     }
   });
-
-  console.log('Новый пользователь подключен', `Всего подключено: ${count}`);
+  console.log(`Сокет подключен: ${socket.id} |`, `Всего: ${count}`);
 
   socket.on('disconnect', ()=>{
-    count--;
     const id = socket.handshake.query.user;
+    const connectionID = connected[id].connection.indexOf(socket.id);
 
-    sendMessage(io, id, 'logout');
-    delete connected[id];
-    io.emit('counter change', count);
+    connected[id].connection.splice(connectionID, 1);
 
-    console.log("Пользователь отключился", `Всего подключено: ${count}`);
+    if(connected[id].connection.length === 0){
+      count--;
+      sendMessage(io, id, 'logout');
+      delete connected[id];
+      io.emit('counter change', count);
+    }
+
+    console.log(`Сокет отключен: ${socket.id} |`, `Всего: ${count}`);
   });
 
   socket.on('chat message', (msg) => {
-    console.log("Message in", msg);
+    console.log("Получено сообщение:", msg);
     sendMessage(io, msg.user, msg.text);
   });
 });
@@ -84,5 +99,15 @@ function sendMessage(io, userID, text){
     };
 
     io.emit('chat message', message);
+    historyHandler(message);
   }
+}
+
+function historyHandler(message){
+  history.push(message);
+  if(history.length >= historyLimit) history.shift();
+}
+
+function sendHistory(sid){
+  if(history.length) io.to(sid).emit('chat message', history);
 }
